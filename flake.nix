@@ -16,7 +16,13 @@
   };
 
   outputs =
-    inputs@{ flake-parts, systems, ... }:
+    inputs@{
+      self,
+      flake-parts,
+      systems,
+      zig,
+      ...
+    }:
     flake-parts.lib.mkFlake { inherit inputs; } {
       systems = import systems;
       imports = [
@@ -26,6 +32,7 @@
       perSystem =
         {
           pkgs,
+          inputs',
           ...
         }:
         {
@@ -33,6 +40,7 @@
             name = "advent-of-code-2025";
 
             buildInputs = with pkgs; [
+              inputs'.zig.packages.default
               zls
             ];
           };
