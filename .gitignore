@@ -9,3 +9,5 @@ result-*
 
 # direnv
 .direnv
+
+input.txt
