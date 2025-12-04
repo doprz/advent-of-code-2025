@@ -1,41 +1,58 @@
 const std = @import("std");
 
-pub fn main() !void {
-    std.debug.print("Hello Advent of Code 2025, Day 1!\n", .{});
+fn zeroCrossings(dir: u8, pos: i32, num: i32) u32 {
+    if (pos == 0) return @intCast(@divFloor(num, 100));
 
+    const steps_to_zero: i32 = if (dir == 'L') pos else 100 - pos;
+    if (num < steps_to_zero) return 0;
+
+    return @intCast(1 + @divFloor(num - steps_to_zero, 100));
+}
+
+pub fn main() !void {
     var gpa = std.heap.DebugAllocator(.{}){};
-    const alloc = gpa.allocator();
     defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    // NOTE: Using Zig 0.15.1 new IO interface
+    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const stdout = &stdout_writer.interface;
 
     const file = try std.fs.cwd().openFile("src/day01/input.txt", .{ .mode = .read_only });
     defer file.close();
 
-    // NOTE: Using Zig 0.15.1 new IO interface
-    var read_buffer: [256]u8 = undefined;
-    var file_reader: std.fs.File.Reader = file.reader(&read_buffer);
+    const file_size = (try file.stat()).size;
+    const content = try file.readToEndAlloc(allocator, file_size);
+    defer allocator.free(content);
 
-    const reader = &file_reader.interface;
-    var line = std.Io.Writer.Allocating.init(alloc);
-    defer line.deinit();
+    var pos: i32 = 50;
+    var part1: u32 = 0;
+    var part2: u32 = 0;
 
-    var position: i32 = 50;
-    var zero_count: u32 = 0;
+    var lines = std.mem.tokenizeScalar(u8, content, '\n');
+    while (lines.next()) |line| {
+        const dir = line[0];
+        const num = try std.fmt.parseInt(i32, line[1..], 10);
 
-    while (true) {
-        _ = reader.streamDelimiter(&line.writer, '\n') catch |err| {
-            if (err == error.EndOfStream) break else return err;
-        };
-        _ = reader.toss(1); // Skip the delimiter
+        part2 += zeroCrossings(dir, pos, num);
 
-        const l: []u8 = line.written();
-        const dir = l[0];
-        const dist = try std.fmt.parseInt(i32, l[1..], 10);
+        switch (dir) {
+            'L' => {
+                pos -= num;
+            },
+            'R' => {
+                pos += num;
+            },
+            else => unreachable,
+        }
 
-        position = if (dir == 'L') @mod(position - dist, 100) else @mod(position + dist, 100);
-        if (position == 0) zero_count += 1;
-
-        line.clearRetainingCapacity(); // Reset the accumulating buffer
+        pos = @mod(pos, 100);
+        if (pos == 0) part1 += 1;
     }
 
-    std.debug.print("Password: {d}\n", .{zero_count});
+    try stdout.print("Hello Advent of Code 2025, Day 1!\n", .{});
+    try stdout.print("Part 1 Password: {d}\n", .{part1});
+    try stdout.print("Part 2 Password: {d}\n", .{part2});
+    try stdout.flush();
 }
