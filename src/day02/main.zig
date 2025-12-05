@@ -5,12 +5,14 @@ const InvalidResult = struct {
     sum: u64 = 0,
 };
 
-fn isInvalid(num: usize, allocator: std.mem.Allocator) !bool {
+fn isInvalid1(num: usize, allocator: std.mem.Allocator) !bool {
     const str = try std.fmt.allocPrint(allocator, "{d}", .{num});
     defer allocator.free(str);
 
     if (str.len & 1 != 0) return false;
 
+    // NOTE: This can also be done with windows
+    // but it's simpler to check lhs to rhs
     const s = str.len / 2;
     const lhs = str[0..s];
     const rhs = str[s..];
@@ -18,25 +20,28 @@ fn isInvalid(num: usize, allocator: std.mem.Allocator) !bool {
     return std.mem.eql(u8, lhs, rhs);
 }
 
-fn isInvalid2(num: usize, allocator: std.mem.Allocator) !bool {
+fn isInvalid2(num: usize, allocator: std.mem.Allocator, stdout: *std.Io.Writer) !bool {
     const str = try std.fmt.allocPrint(allocator, "{d}", .{num});
     defer allocator.free(str);
 
-    for (1..str.len) |win_len| {
-        if (str.len % win_len != 0) continue; // Divisible
-        if (str.len / win_len < 2) continue; // Pattern repeats at least twice
+    for (1..str.len) |win_size| windowloop: {
+        if (str.len % win_size != 0) continue; // Divisible
+        if (str.len / win_size < 2) continue; // Pattern repeats at least twice
 
-        var window = std.mem.window(u8, str, win_len, win_len);
-        const first = window.next() orelse unreachable;
+        var window = std.mem.window(u8, str, win_size, win_size);
+        var prev = window.next() orelse unreachable;
         var all_match = true; // Assume all chunks match
 
         while (window.next()) |chunk| {
-            if (!std.mem.eql(u8, first, chunk)) {
+            if (!std.mem.eql(u8, prev, chunk)) {
                 all_match = false;
-                break;
+                break :windowloop;
             }
+
+            prev = chunk;
         }
 
+        try stdout.print("  Found invalid ID: {d} | Pattern: {s} | Window Size: {d}\n", .{ num, prev, win_size });
         return all_match;
     }
 
@@ -78,7 +83,8 @@ pub fn main() !void {
         try stdout.flush();
 
         for (start..end + 1) |num| {
-            if (try isInvalid(num, allocator)) {
+            // Part 1
+            if (try isInvalid1(num, allocator)) {
                 p1.num += 1;
                 p1.sum += num;
 
@@ -86,13 +92,12 @@ pub fn main() !void {
                 // try stdout.flush();
             }
 
-            if (try isInvalid2(num, allocator)) {
+            // Part 2
+            if (try isInvalid2(num, allocator, stdout)) {
                 p2.num += 1;
                 p2.sum += num;
-
-                try stdout.print("  Found invalid ID: {d}\n", .{num});
-                try stdout.flush();
             }
+            try stdout.flush();
         }
     }
 
