@@ -4,7 +4,7 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const d = 2;
+    const d = 3;
     inline for (1..d) |day| {
         const day_str = std.fmt.comptimePrint("day{d:0>2}", .{day});
         const exe_mod = b.createModule(.{
