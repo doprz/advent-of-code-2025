@@ -72,6 +72,7 @@ pub fn main() !void {
 
     var p1 = InvalidResult{};
     var p2 = InvalidResult{};
+    const parts = [_]*InvalidResult{ &p1, &p2 }; // Pointer array
 
     while (iter.peek()) |_| {
         const start_raw = iter.next() orelse unreachable;
@@ -87,9 +88,6 @@ pub fn main() !void {
             if (try isInvalid1(num, allocator)) {
                 p1.num += 1;
                 p1.sum += num;
-
-                // try stdout.print("  Found invalid ID: {d}\n", .{num});
-                // try stdout.flush();
             }
 
             // Part 2
@@ -97,14 +95,12 @@ pub fn main() !void {
                 p2.num += 1;
                 p2.sum += num;
             }
-            try stdout.flush();
         }
     }
 
-    const parts = [_]*InvalidResult{ &p1, &p2 };
-
+    try stdout.print("==================================================\n", .{});
     for (parts, 0..) |p, i| {
-        try stdout.print("Part {d}: ", .{i});
+        try stdout.print("Part {d}: \n", .{i});
         try stdout.print("  Total invalid IDs found: {d}\n", .{p.num});
         try stdout.print("  Sum of all invalid IDs: {d}\n", .{p.sum});
     }
