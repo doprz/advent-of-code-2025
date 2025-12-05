@@ -1,5 +1,10 @@
 const std = @import("std");
 
+const InvalidResult = struct {
+    num: u64 = 0,
+    sum: u64 = 0,
+};
+
 fn isInvalid(num: usize, allocator: std.mem.Allocator) !bool {
     const str = try std.fmt.allocPrint(allocator, "{d}", .{num});
     defer allocator.free(str);
@@ -11,6 +16,31 @@ fn isInvalid(num: usize, allocator: std.mem.Allocator) !bool {
     const rhs = str[s..];
 
     return std.mem.eql(u8, lhs, rhs);
+}
+
+fn isInvalid2(num: usize, allocator: std.mem.Allocator) !bool {
+    const str = try std.fmt.allocPrint(allocator, "{d}", .{num});
+    defer allocator.free(str);
+
+    for (1..str.len) |win_len| {
+        if (str.len % win_len != 0) continue; // Divisible
+        if (str.len / win_len < 2) continue; // Pattern repeats at least twice
+
+        var window = std.mem.window(u8, str, win_len, win_len);
+        const first = window.next() orelse unreachable;
+        var all_match = true; // Assume all chunks match
+
+        while (window.next()) |chunk| {
+            if (!std.mem.eql(u8, first, chunk)) {
+                all_match = false;
+                break;
+            }
+        }
+
+        return all_match;
+    }
+
+    return false;
 }
 
 pub fn main() !void {
@@ -35,8 +65,8 @@ pub fn main() !void {
     const line = std.mem.trim(u8, content, "\n");
     var iter = std.mem.splitAny(u8, line, "-,");
 
-    var total_invalid: u64 = 0;
-    var invalid_sum: u64 = 0;
+    var p1 = InvalidResult{};
+    var p2 = InvalidResult{};
 
     while (iter.peek()) |_| {
         const start_raw = iter.next() orelse unreachable;
@@ -49,8 +79,16 @@ pub fn main() !void {
 
         for (start..end + 1) |num| {
             if (try isInvalid(num, allocator)) {
-                total_invalid += 1;
-                invalid_sum += num;
+                p1.num += 1;
+                p1.sum += num;
+
+                // try stdout.print("  Found invalid ID: {d}\n", .{num});
+                // try stdout.flush();
+            }
+
+            if (try isInvalid2(num, allocator)) {
+                p2.num += 1;
+                p2.sum += num;
 
                 try stdout.print("  Found invalid ID: {d}\n", .{num});
                 try stdout.flush();
@@ -58,7 +96,12 @@ pub fn main() !void {
         }
     }
 
-    try stdout.print("Total invalid IDs found: {d}\n", .{total_invalid});
-    try stdout.print("Sum of all invalid IDs: {d}\n", .{invalid_sum});
+    const parts = [_]*InvalidResult{ &p1, &p2 };
+
+    for (parts, 0..) |p, i| {
+        try stdout.print("Part {d}: ", .{i});
+        try stdout.print("  Total invalid IDs found: {d}\n", .{p.num});
+        try stdout.print("  Sum of all invalid IDs: {d}\n", .{p.sum});
+    }
     try stdout.flush();
 }
